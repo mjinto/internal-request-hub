@@ -39,6 +39,14 @@ npm start         # Run the production server
 npm run db:reset  # Delete and recreate the local database
 ```
 
+## Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+The repository includes a `render.yaml` Blueprint for a free Render web service. During setup, connect the private GitHub repository and allow Render access to it. Render deploys `main` only after its GitHub checks pass and verifies the service through `/api/health`.
+
+The free service uses an ephemeral filesystem. Its seeded SQLite database is recreated when the service restarts, redeploys, or wakes after spinning down. This makes the deployment suitable for demonstrations and resettable training exercises. Use PostgreSQL or a paid persistent disk if request data must survive restarts.
+
 ## Simulated identity
 
 The user selector represents the current signed-in user. It exists only for training and local demonstration. The API accepts `currentUserId` to apply basic data visibility rules. This is not production authentication.
