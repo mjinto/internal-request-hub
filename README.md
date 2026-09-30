@@ -39,13 +39,19 @@ npm start         # Run the production server
 npm run db:reset  # Delete and recreate the local database
 ```
 
-## Deploy to Render
+## Verify a merged change locally
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+There is no hosted deployment for this course. GitHub Actions runs lint, tests, and the build on every pull request and on `main` (see `.github/workflows/ci.yml`). After merging a reviewed pull request, verify the change by running the merged `main` commit locally:
 
-The repository includes a `render.yaml` Blueprint for a free Render web service. During setup, connect the private GitHub repository and allow Render access to it. Render deploys `main` only after its GitHub checks pass and verifies the service through `/api/health`.
+```bash
+git switch main
+git pull
+npm install
+npm run build
+npm start        # serves the built client and API together on port 3001
+```
 
-The free service uses an ephemeral filesystem. Its seeded SQLite database is recreated when the service restarts, redeploys, or wakes after spinning down. This makes the deployment suitable for demonstrations and resettable training exercises. Use PostgreSQL or a paid persistent disk if request data must survive restarts.
+Check `/api/health` and the relevant feature scenario in the browser. The SQLite database persists in `server/data/request-hub.db` between runs, so a restart does not lose data; use `npm run db:reset` to return to the seeded state, including for a rollback rehearsal (`git revert`/`git checkout` the previous commit, restart, verify, then restore).
 
 ## Simulated identity
 
