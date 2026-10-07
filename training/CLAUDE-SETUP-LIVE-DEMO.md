@@ -176,7 +176,7 @@ Walk through the request trace with the technical-reviewer role. Confirm where t
 
 **Say:** “We are not going to write down any rules yet. We are going to draft intent, then spec, then plan for one real change — by hand, from memory, with nothing enforcing the order except our own discipline. The rules we write afterward should describe what we actually did here, not something invented in the abstract.”
 
-**Continuation prerequisite:** Confirm `training/inputs/issues/` and `training/inputs/templates/` are present in this checkout before running the copy commands below. Steps 1–5 can be demonstrated independently; do not invent missing requirements to continue.
+**Continuation prerequisite:** Confirm `training/inputs/issues/` and `training/work/_templates/` are present in this checkout before running the copy commands below. Steps 1–5 can be demonstrated independently; do not invent missing requirements to continue.
 
 Return to the intent and specification slides. Read `training/inputs/issues/01-cancel-request.md` with the audience.
 
@@ -184,8 +184,8 @@ Return to the intent and specification slides. Read `training/inputs/issues/01-c
 
 ```bash
 mkdir -p training/work/cancel-request
-cp training/inputs/templates/intent.md training/work/cancel-request/intent.md
-cp training/inputs/templates/spec.md training/work/cancel-request/spec.md
+cp training/work/_templates/intent.md training/work/cancel-request/intent.md
+cp training/work/_templates/spec.md training/work/cancel-request/spec.md
 ```
 
 **Claude prompt (intent):**
@@ -214,7 +214,7 @@ code.
 Have a reviewer accept or correct the spec; record only the actual decision made. Do not create `plan.md` yet — copy its template only once the spec is accepted:
 
 ```bash
-cp training/inputs/templates/plan.md training/work/cancel-request/plan.md
+cp training/work/_templates/plan.md training/work/cancel-request/plan.md
 ```
 
 **Claude prompt (plan):**
@@ -392,7 +392,7 @@ Create .claude/skills/draft-intent-from-issue/SKILL.md as a
 manually-invoked skill (disable-model-invocation: true). It takes two
 arguments - an issue reference and a change folder. It should: invoke
 the fetch-github-issue skill with the issue reference and stop if that
-fails; read training/inputs/templates/intent.md plus CLAUDE.md,
+fails; read training/work/_templates/intent.md plus CLAUDE.md,
 docs/domain.md and docs/architecture.md for project context; create the
 change folder if needed; and draft intent.md there using the template's
 sections - problem and desired outcome from the issue, scope and
@@ -444,12 +444,12 @@ prerequisite above.
 **Claude prompt:**
 
 ```text
-Draft constitution.md at the repository root for team review, and propose
-a lightweight spec-driven SDLC convention for how we develop every
-feature in this repo going forward.
+Draft constitution.md at the repository root for team review, and document
+a lightweight spec-driven SDLC convention for how we develop every feature
+in this repo going forward.
 
-Use the newly reviewed docs/domain.md and docs/architecture.md as
-project context. Separate existing facts from the rules the team agrees.
+Use the newly reviewed docs/domain.md and docs/architecture.md as project
+context. Separate existing facts from the rules the team agrees.
 
 Include these proposed team rules in constitution.md:
 - Keep the existing JavaScript, React, Express and SQLite stack.
@@ -465,11 +465,16 @@ Include these proposed team rules in constitution.md:
 
 Also document this spec-driven workflow as a team rule, in place of a
 single "agree intent and specification" line:
-- Each feature gets its own folder under specs/<feature-name>/,
+- Each feature gets its own folder under training/work/<feature-name>/,
   containing three artifacts in strict order: intent.md, then spec.md,
-  then plan.md.
+  then plan.md. training/work is the single home for all feature work in
+  this repo; there is no separate specs/ folder.
 - intent.md records the problem, outcome and scope. The originator
-  drafts it; the product owner accepts it.
+  drafts it; the product owner accepts it. When the feature comes from a
+  GitHub issue, the originator may use the `draft-intent-from-issue`
+  skill to fetch the issue and produce a draft intent.md. Its output is
+  always a draft: it must not mark the intent accepted, and the issue
+  link must be recorded in intent.md as its source.
 - spec.md records behavior, design and constraints. The engineer drafts
   it; the technical lead approves it.
 - plan.md records implementation steps and checks. The engineer owns it;
@@ -479,12 +484,14 @@ single "agree intent and specification" line:
   approver. Do not draft the next phase's artifact, and do not invent or
   assume an approval that was not actually given.
 - Once plan.md is approved, implementation proceeds to a diff, then a
-  review of that diff. That review runs the `authorization-reviewer`
-  agent (`.claude/agents/authorization-reviewer.md`) against the diff
-  and, once a plan.md with an Acceptance-to-evidence map exists, the
-  `verify-checkpoint` skill, rather than relying on an ad hoc read-
-  through; `/code-review` and `/security-review` remain available for
-  concerns outside the authorization boundary.
+  review of that diff. Every diff gets an authorization review and, once
+  plan.md has an Acceptance-to-evidence map, a verification check against
+  it, rather than an ad hoc read-through. State this requirement in
+  constitution.md and name the tools once (the `authorization-reviewer`
+  agent and the `verify-checkpoint` skill). Put invocation details
+  (paths, when to run, arguments) in CLAUDE.md, not the constitution.
+  `/code-review` and `/security-review` remain available for concerns
+  outside the authorization boundary.
 - Review findings return to whichever earlier decision needs correction,
   not forward to a new artifact: a defect in the implementation returns
   to the diff for a fix; an unsuitable approach returns to plan.md for
@@ -493,28 +500,38 @@ single "agree intent and specification" line:
 - Record the actual approval decision and approver for each phase
   transition inside the artifact itself (or a short note beside it);
   never mark a phase approved on the agent's own authority.
-- These saved records are what carry decisions forward between sessions
-  — do not rely on replaying prior chat history to reconstruct a
-  decision; read the artifact instead.
-- Propose a short specs/README.md describing this convention (the three
-  artifacts, their owners/approvers, the gate rule, and the diff/review
-  feedback loop) and a blank template for intent.md, spec.md and plan.md,
-  for reuse by future features.
+- These saved records are what carry decisions forward between sessions.
+  Do not rely on replaying prior chat history to reconstruct a decision;
+  read the artifact instead.
+- Write training/work/README.md describing this convention (the three
+  artifacts, their owners/approvers, the gate rule, the optional
+  draft-intent-from-issue entry point, and the diff/review feedback
+  loop). Point it at the templates in training/work/_templates/ as the
+  canonical starting point for intent.md, spec.md and plan.md —
+  training/inputs/templates/ has been retired in favor of this single
+  location.
+- Confirm training/work/_templates covers what the convention requires
+  (named owner and approver per artifact, an approval record section
+  with decision, approver and date, a source-issue field in intent.md,
+  an Acceptance-to-evidence map in plan.md, a place to record which
+  stage a review finding was routed back to). Keep the templates blank:
+  no example approvals or filled-in names.
+- Add the CLAUDE.md pointers for the review tools and the
+  draft-intent-from-issue skill as a proposed diff for review; do not
+  rewrite unrelated parts of CLAUDE.md.
 
 Do not implement features or claim these rules already have technical
-approval enforcement. Do not scaffold a specs/ folder for any specific
-feature yet — only the convention, its README, and the blank templates.
-Report any conflict with the current repository, including the existing
-training/inputs/templates and the training/work/cancel-request/{intent,spec,plan}.md
-artifacts created by hand two steps ago — note in particular that those
-artifacts used informal, undifferentiated reviewer roles for spec and
-plan, not the distinct technical-lead/technical-reviewer approvers
-proposed here. Note whether specs/ should generalize the training/work
-convention for ongoing repo work while training/work stays scoped to
-workshop exercises, or whether the two should be unified. Also note
-whether the `authorization-reviewer` agent and `verify-checkpoint`
-skill built in the previous step should be referenced here by name, or
-left for CLAUDE.md to point at instead.
+approval enforcement. Do not create a feature folder for any new feature.
+Do not build or modify the draft-intent-from-issue skill in this step;
+if it does not exist under .claude/skills/, report that as a gap.
+
+Report any conflict with the current repository, without changing the
+affected files:
+- training/work/cancel-request/{intent,spec,plan}.md: these were created
+  by hand before this convention and used informal, undifferentiated
+  reviewer roles for spec and plan rather than the distinct technical
+  lead / technical reviewer approvers. List what would need to change
+  for them to conform, but do not edit them or backfill approvals.
 ```
 
 Review the draft with the audience. The following is a compact fallback to type manually if the generation takes too long:
@@ -649,7 +666,7 @@ Accept a change folder as its argument. Read intent.md and spec.md there,
 then CLAUDE.md, constitution.md and the domain/architecture guides.
 If required inputs or actual acceptance decisions are missing, report
 that gap instead of inventing them. Inspect repository behavior and cite
-files. Use training/inputs/templates/plan.md to write plan.md in the change folder.
+files. Use training/work/_templates/plan.md to write plan.md in the change folder.
 Map every acceptance example to verification, flag risks and questions,
 and stop for technical-reviewer acceptance of plan.md before editing
 implementation code.
@@ -676,7 +693,7 @@ Change folder: $ARGUMENTS
 2. Read CLAUDE.md, constitution.md, docs/domain.md and docs/architecture.md.
 3. Inspect relevant client, API, database and test behavior; cite files.
 4. Propose the smallest approach consistent with the accepted spec.
-5. Use training/inputs/templates/plan.md to write plan.md in the change folder.
+5. Use training/work/_templates/plan.md to write plan.md in the change folder.
 6. Map each acceptance example to a checkpoint and verification method.
 7. Report risks, unresolved questions and the plan path.
 8. Stop for technical-reviewer acceptance of plan.md. Do not edit

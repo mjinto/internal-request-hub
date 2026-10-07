@@ -23,7 +23,7 @@ Arguments: $ARGUMENTS - expected as two tokens:
    get its number, title, state, labels, URL and body. If that fails,
    stop and report the failure - do not draft from a partial or
    imagined issue.
-3. Read `training/inputs/templates/intent.md` for the required
+3. Read `training/work/_templates/intent.md` for the required
    sections, and `CLAUDE.md`, `docs/domain.md`, and
    `docs/architecture.md` (whichever exist) for project context - the
    same grounding used when intent.md is drafted by hand.

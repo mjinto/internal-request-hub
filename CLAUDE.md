@@ -74,3 +74,34 @@ CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run lint`, `npm test`, `npm 
 
 - Server tests (`server/test/app.test.js`) use `createDatabase(":memory:")` and Node's built-in test runner (`node:test` / `node:assert/strict`) — no mocking of SQLite, exercise real queries against seeded fixture data (ids 1–6 for users, 101–105 for requests).
 - Client tests use Vitest + Testing Library with jsdom (`client/src/test-setup.js`).
+
+## Feature workflow and review tools
+
+Shared team rules for how every feature in this repo is developed are
+in `constitution.md` at the repo root; the three-artifact convention it
+points to is detailed in `training/work/README.md`. This section only
+covers how to actually invoke the tools that convention names.
+
+- **Starting a feature from a GitHub issue (optional):**
+  `/draft-intent-from-issue <issue-reference> <change-folder>`, e.g.
+  `/draft-intent-from-issue 42 training/work/some-feature`. Internally
+  invokes `/fetch-github-issue` (requires `gh` installed and
+  authenticated — `gh auth status`). Produces only a draft
+  `intent.md`, recorded with the issue as its source; the product owner
+  still accepts it separately.
+- **After `plan.md` is approved and a diff exists:** use the
+  `authorization-reviewer` agent on the diff — name it explicitly, e.g.
+  "use the authorization-reviewer agent on this diff"
+  (`.claude/agents/authorization-reviewer.md`). It checks identity
+  resolution, ownership/role/status checks, denial error shape, and
+  parameterized SQL — nothing else.
+- **Once `plan.md` has an Acceptance-to-evidence map:** run
+  `/verify-checkpoint <change-folder>`, e.g.
+  `/verify-checkpoint training/work/cancel-request`
+  (`.claude/skills/verify-checkpoint/SKILL.md`). It re-runs
+  `npm test`/`npm run lint`/`npm run build`, invokes
+  `authorization-reviewer` on the current diff, and checks that every
+  acceptance example in the plan's evidence map has real, passing
+  evidence.
+- `/code-review` and `/security-review` remain available for concerns
+  outside the authorization boundary.

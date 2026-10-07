@@ -66,4 +66,4 @@ See [`training/issues`](training/issues) for the prepared exercises.
 
 ## Audience starter
 
-Follow [the participant walkthrough](training/WORKSHOP.md) for the workshop sequence, role decisions and verification. Blank artifact templates are in [training/templates](training/templates). This is a minimal starter: participants create CLAUDE.md and their planning skill during the workshop using their own installed tool and account. The application runs without Claude. No Claude setup or exercise solution is included.
+Follow [the participant walkthrough](training/inputs/WORKSHOP.md) for the workshop sequence, role decisions and verification. Blank artifact templates are in [training/work/_templates](training/work/_templates). This is a minimal starter: participants create CLAUDE.md and their planning skill during the workshop using their own installed tool and account. The application runs without Claude. No Claude setup or exercise solution is included.

@@ -14,7 +14,7 @@ This branch is an unfinished application for practicing the AI-assisted developm
 
 Start with `training/issues/01-cancel-request.md`. Approval/rejection and history are separate later exercises.
 
-Create `training/work/<your-change>/` and copy the blank templates from `training/templates/`. Fill them with actual decisions and evidence rather than asking the agent to invent approvals.
+Create `training/work/<your-change>/` and copy the blank templates from `training/work/_templates/`. Fill them with actual decisions and evidence rather than asking the agent to invent approvals.
 
 | Step | Record | Workshop decision owner |
 | --- | --- | --- |
