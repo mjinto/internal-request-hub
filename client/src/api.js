@@ -1,10 +1,14 @@
-async function requestJson(url, { method = "GET" } = {}) {
-  const response = await fetch(url, { method });
-  const body = await response.json().catch(() => null);
+async function requestJson(url, { method = "GET", body } = {}) {
+  const response = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const responseBody = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(body?.error?.message ?? `Request failed with status ${response.status}.`);
+    throw new Error(responseBody?.error?.message ?? `Request failed with status ${response.status}.`);
   }
-  return body;
+  return responseBody;
 }
 
 export async function loadUsers() {
@@ -23,5 +27,19 @@ export async function cancelRequest(requestId, currentUserId) {
   return (await requestJson(
     `/api/requests/${requestId}/cancel?currentUserId=${currentUserId}`,
     { method: "POST" },
+  )).data;
+}
+
+export async function approveRequest(requestId, currentUserId) {
+  return (await requestJson(
+    `/api/requests/${requestId}/approve?currentUserId=${currentUserId}`,
+    { method: "POST" },
+  )).data;
+}
+
+export async function rejectRequest(requestId, currentUserId, comment) {
+  return (await requestJson(
+    `/api/requests/${requestId}/reject?currentUserId=${currentUserId}`,
+    { method: "POST", body: { comment } },
   )).data;
 }

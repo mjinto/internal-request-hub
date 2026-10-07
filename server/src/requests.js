@@ -53,6 +53,53 @@ export function getVisibleRequest(db, user, requestId) {
   return request;
 }
 
+function loadDecidableRequest(db, user, requestId) {
+  const id = Number(requestId);
+  if (!Number.isInteger(id)) {
+    throw new HttpError(400, "INVALID_REQUEST_ID", "Request ID must be a number.");
+  }
+
+  const request = db.prepare(`${requestSelect} WHERE r.id = ?`).get(id);
+  if (!request) {
+    throw new HttpError(404, "REQUEST_NOT_FOUND", "Request not found.");
+  }
+
+  if (request.assignedReviewerId !== user.id) {
+    throw new HttpError(403, "REQUEST_FORBIDDEN", "You cannot decide this request.");
+  }
+
+  if (request.status !== "Submitted") {
+    throw new HttpError(409, "REQUEST_NOT_DECIDABLE", "Only a submitted request can be decided.");
+  }
+
+  return id;
+}
+
+export function approveRequest(db, user, requestId) {
+  const id = loadDecidableRequest(db, user, requestId);
+
+  const now = new Date().toISOString();
+  db.prepare(`UPDATE requests SET status = 'Approved', updated_at = ? WHERE id = ?`).run(now, id);
+
+  return db.prepare(`${requestSelect} WHERE r.id = ?`).get(id);
+}
+
+export function rejectRequest(db, user, requestId, comment) {
+  const id = loadDecidableRequest(db, user, requestId);
+
+  const trimmedComment = typeof comment === "string" ? comment.trim() : "";
+  if (!trimmedComment) {
+    throw new HttpError(400, "REJECTION_COMMENT_REQUIRED", "A comment is required to reject a request.");
+  }
+
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE requests SET status = 'Rejected', reviewer_comment = ?, updated_at = ? WHERE id = ?
+  `).run(trimmedComment, now, id);
+
+  return db.prepare(`${requestSelect} WHERE r.id = ?`).get(id);
+}
+
 export function cancelRequest(db, user, requestId) {
   const id = Number(requestId);
   if (!Number.isInteger(id)) {

@@ -1,6 +1,13 @@
+import { useEffect, useState } from "react";
 import StatusBadge from "./StatusBadge.jsx";
 
-export default function RequestDetails({ request, currentUserId, onCancel }) {
+export default function RequestDetails({ request, currentUserId, onCancel, onApprove, onReject }) {
+  const [rejectComment, setRejectComment] = useState("");
+
+  useEffect(() => {
+    setRejectComment("");
+  }, [request?.id, request?.status]);
+
   if (!request) {
     return (
       <section className="panel detail-panel empty-detail" aria-live="polite">
@@ -43,6 +50,31 @@ export default function RequestDetails({ request, currentUserId, onCancel }) {
         <button type="button" className="cancel-request" onClick={onCancel}>
           Cancel request
         </button>
+      )}
+
+      {request.status === "Submitted" && request.assignedReviewerId === currentUserId && (
+        <div className="decision-controls">
+          <button type="button" className="approve-request" onClick={onApprove}>
+            Approve
+          </button>
+
+          <div className="reject-control">
+            <label htmlFor="reject-comment">Reviewer comment (required to reject)</label>
+            <textarea
+              id="reject-comment"
+              value={rejectComment}
+              onChange={(event) => setRejectComment(event.target.value)}
+            />
+            <button
+              type="button"
+              className="reject-request"
+              disabled={!rejectComment.trim()}
+              onClick={() => onReject(rejectComment)}
+            >
+              Reject
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );
