@@ -16,7 +16,7 @@ This is an instruction guide. It does not pre-create Claude configuration or imp
 | 4 | Discover and review `docs/domain.md` | Establish what the application currently does |
 | 5 | Discover and review `docs/architecture.md` | Establish how the application currently works |
 | 6 | Walk the cancellation change through intent, spec and plan, by hand | Feel the manual process before automating it |
-| 7 | Build a custom review agent and skill | See how a project-specific agent differs from a generic one |
+| 7 | Build custom tools: a review agent and three skills | See a project-specific agent, a skill that calls it, and two skills that chain together |
 | 8 | Create `constitution.md` | Write down the rules we just followed, for every future change |
 | 9 | Import the reviewed documents from `CLAUDE.md` | Connect shared understanding and rules to the agent |
 | 10 | Confirm the context loaded | Check the wiring, not just the filenames |
@@ -31,6 +31,7 @@ This is an instruction guide. It does not pre-create Claude configuration or imp
 - Inspect `git status --short`. Save unrelated work before switching branches. Do not reset or clean someone else's work to obtain a fresh demo.
 - Check whether `docs/domain.md`, `docs/architecture.md`, `CLAUDE.md`, `constitution.md`, `training/work/cancel-request/` or `.claude/` already exist. On a reused demo checkout, review or reuse them; `/init` may suggest changes to an existing file instead of creating a new one.
 - Existing personal or parent-directory Claude instructions can also affect the session. Keep the distinction between personal settings and the repository's shared rules visible.
+- If you want to actually demonstrate fetching a live GitHub issue in step 7, install and authenticate the GitHub CLI beforehand: `gh --version` and `gh auth status`. Without it, `fetch-github-issue` still works as designed — it fails with the real `gh` error instead of inventing issue content — but you won't have a real issue to fetch from.
 
 ## Step 1 — Open and verify the starter
 
@@ -254,7 +255,7 @@ git commit -m "Capture the cancellation change: accepted intent, spec and plan"
 
 **Checkpoint:** `training/work/cancel-request` contains an accepted `intent.md`, `spec.md` and `plan.md`, each drafted only after the previous one was reviewed. Implementation has not started — that stays a separate, later decision.
 
-## Step 7 — Build a custom review agent and skill
+## Step 7 — Build custom tools: a review agent and three skills
 
 **Say:** “`/code-review` and `/security-review` are generic — they don't know this app's one specific rule: every request action must be checked on the server, using ownership, status and role, never just hidden in the UI. Let's build two things once, so every future exercise reuses them instead of re-explaining the rule each time: an **agent**, which knows the rule and reviews a diff against it, and a **skill**, which runs a whole verification checklist automatically. Both are triggered by name, on purpose — neither fires itself.”
 
@@ -263,7 +264,9 @@ is a separate worker with its own instructions and its own set of
 tools, good at one focused kind of judgment call. A skill is a
 procedure — a checklist loaded into the current session, good at
 repeating the same multi-step task the same way every time, and able
-to call on an agent as one of its steps. We build one of each here.
+to call on an agent as one of its steps, or on another skill as one of
+its steps. We build one of each first, then two more skills later in
+this step that chain together the second way.
 
 **Claude prompt (agent):**
 
@@ -338,6 +341,101 @@ has been invoked yet.
   path shown above and that its frontmatter starts with `---` as the
   very first line — the same failure mode already noted for
   `plan-feature` in step 11.
+
+### Two more skills: fetching a real GitHub issue into an intent
+
+**Say:** “In step 6 we read a pre-written issue brief from
+`training/inputs/issues/`. A real team's issues live in GitHub. Let's
+build the same intake step, but pointed at a real issue — one skill
+that only fetches, and a second skill that reuses the first one to
+draft `intent.md` from whatever it fetched. This is the other way
+skills compose: not a skill calling an agent, but a skill calling
+another skill.”
+
+**Prerequisite for this part:** the GitHub CLI (`gh`), installed and
+authenticated (`gh auth status`). If it isn't available, build the
+skills anyway — `fetch-github-issue` is designed to fail with the real
+`gh` error rather than invent issue content, which is itself worth
+showing the audience once.
+
+To install `gh`:
+
+```text
+macOS (Homebrew):   brew install gh
+Windows (winget):   winget install --id GitHub.cli
+Linux (apt):        sudo apt install gh
+```
+
+See <https://github.com/cli/cli#installation> for other package managers.
+Then authenticate once with `gh auth login` and verify with
+`gh auth status`.
+
+**Claude prompt (fetch-github-issue skill):**
+
+```text
+Create .claude/skills/fetch-github-issue/SKILL.md as a manually-invoked
+skill (disable-model-invocation: true). Given an issue reference as its
+argument (a bare number for the current repo, owner/repo#number, or a
+full GitHub issue URL), it should: confirm gh is installed and
+authenticated (gh auth status), stop with the real error if not; fetch
+the issue with gh issue view <reference> --json
+number,title,state,url,labels,body; and report the number, title,
+state, URL, labels and full body verbatim, not paraphrased. It must not
+fetch comments, must not modify the issue in any way, and must not
+write any file - this skill only reports. Create only this one file.
+```
+
+**Claude prompt (draft-intent-from-issue skill):**
+
+```text
+Create .claude/skills/draft-intent-from-issue/SKILL.md as a
+manually-invoked skill (disable-model-invocation: true). It takes two
+arguments - an issue reference and a change folder. It should: invoke
+the fetch-github-issue skill with the issue reference and stop if that
+fails; read training/inputs/templates/intent.md plus CLAUDE.md,
+docs/domain.md and docs/architecture.md for project context; create the
+change folder if needed; and draft intent.md there using the template's
+sections - problem and desired outcome from the issue, scope and
+constraints cross-checked against the real repository, open questions
+for anything the issue leaves ambiguous, and the acceptance decision
+left pending for the product owner. Record the issue's number and URL
+as intent.md's source. Propose changes instead of overwriting if
+intent.md already exists. It must not draft spec.md or plan.md, and
+must not edit application code. Create only this one file.
+```
+
+**How to use them, with examples:**
+
+Fetching an issue directly — any of these three reference forms work:
+
+```text
+/fetch-github-issue 42
+/fetch-github-issue anthropics/claude-code#1234
+/fetch-github-issue https://github.com/owner/repo/issues/42
+```
+
+Drafting an intent from an issue in one step — this invokes
+`fetch-github-issue` internally, so you don't run that first yourself:
+
+```text
+/draft-intent-from-issue 42 training/work/some-feature
+```
+
+This creates `training/work/some-feature/intent.md` from issue #42 in
+the current repository, with the acceptance decision left pending —
+review and accept it with the product-owner role exactly as in step 6,
+before anyone drafts `spec.md`. If `gh` can't reach the issue (not
+authenticated, issue doesn't exist, wrong repo), the skill reports that
+real failure and stops; it does not draft a fictional intent to keep
+going.
+
+**Checkpoint:** `.claude/skills/fetch-github-issue/SKILL.md` and
+`.claude/skills/draft-intent-from-issue/SKILL.md` exist, both scoped to
+manual invocation. `draft-intent-from-issue`'s instructions name
+`fetch-github-issue` explicitly rather than duplicating its `gh`
+commands inline. Neither has necessarily been run yet — note that a
+live fetch requires `gh` to be installed and authenticated, per the
+prerequisite above.
 
 ## Step 8 — Agree and create the project constitution
 

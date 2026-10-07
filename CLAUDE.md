@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project
 
 Internal Request Hub is the starter application for the AI-300 greenfield software development course. Employees view requests they created, reviewers view requests assigned to them, and administrators view all requests.
+
 ## Commands
 
 Run from the repo root (npm workspaces: `client`, `server`).
