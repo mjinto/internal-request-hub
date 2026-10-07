@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getCurrentUser } from "./current-user.js";
 import { errorResponse } from "./http-errors.js";
-import { getVisibleRequest, listVisibleRequests } from "./requests.js";
+import { cancelRequest, getVisibleRequest, listVisibleRequests } from "./requests.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(currentDir, "../../client/dist");
@@ -49,6 +49,15 @@ export function createApp({ db }) {
     try {
       const user = getCurrentUser(db, request.query.currentUserId);
       response.json({ data: getVisibleRequest(db, user, request.params.id) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/requests/:id/cancel", (request, response, next) => {
+    try {
+      const user = getCurrentUser(db, request.query.currentUserId);
+      response.json({ data: cancelRequest(db, user, request.params.id) });
     } catch (error) {
       next(error);
     }

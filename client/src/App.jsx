@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadRequest, loadRequests, loadUsers } from "./api.js";
+import { cancelRequest, loadRequest, loadRequests, loadUsers } from "./api.js";
 import RequestDetails from "./components/RequestDetails.jsx";
 import RequestList from "./components/RequestList.jsx";
 import UserSwitcher from "./components/UserSwitcher.jsx";
@@ -46,6 +46,16 @@ export default function App() {
     }
   }
 
+  async function cancelSelectedRequest() {
+    try {
+      setError("");
+      setSelectedRequest(await cancelRequest(selectedRequest.id, currentUserId));
+      setRequests(await loadRequests(currentUserId));
+    } catch (cancelError) {
+      setError(cancelError.message);
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -82,7 +92,11 @@ export default function App() {
             selectedId={selectedRequest?.id}
             onSelect={openRequest}
           />
-          <RequestDetails request={selectedRequest} />
+          <RequestDetails
+            request={selectedRequest}
+            currentUserId={currentUserId}
+            onCancel={cancelSelectedRequest}
+          />
         </div>
       </main>
     </div>

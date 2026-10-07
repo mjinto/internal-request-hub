@@ -1,5 +1,5 @@
-async function requestJson(url) {
-  const response = await fetch(url);
+async function requestJson(url, { method = "GET" } = {}) {
+  const response = await fetch(url, { method });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     throw new Error(body?.error?.message ?? `Request failed with status ${response.status}.`);
@@ -17,4 +17,11 @@ export async function loadRequests(currentUserId) {
 
 export async function loadRequest(requestId, currentUserId) {
   return (await requestJson(`/api/requests/${requestId}?currentUserId=${currentUserId}`)).data;
+}
+
+export async function cancelRequest(requestId, currentUserId) {
+  return (await requestJson(
+    `/api/requests/${requestId}/cancel?currentUserId=${currentUserId}`,
+    { method: "POST" },
+  )).data;
 }

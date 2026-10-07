@@ -1,6 +1,6 @@
 import StatusBadge from "./StatusBadge.jsx";
 
-export default function RequestDetails({ request }) {
+export default function RequestDetails({ request, currentUserId, onCancel }) {
   if (!request) {
     return (
       <section className="panel detail-panel empty-detail" aria-live="polite">
@@ -37,6 +37,12 @@ export default function RequestDetails({ request }) {
           <strong>Reviewer comment</strong>
           <p>{request.reviewerComment}</p>
         </div>
+      )}
+
+      {request.status === "Submitted" && request.requesterId === currentUserId && (
+        <button type="button" className="cancel-request" onClick={onCancel}>
+          Cancel request
+        </button>
       )}
     </section>
   );

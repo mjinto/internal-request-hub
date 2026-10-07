@@ -4,8 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Internal Request Hub is the starter application for the AI-300 greenfield software development course. Employees view requests they created, reviewers view requests assigned to them, and administrators view all requests. The repo intentionally ships a small, realistic base: approval, rejection, cancellation, and request-history workflows are **not implemented** — they are reserved for exercises. Don't add them speculatively.
-
+Internal Request Hub is the starter application for the AI-300 greenfield software development course. Employees view requests they created, reviewers view requests assigned to them, and administrators view all requests.
 ## Commands
 
 Run from the repo root (npm workspaces: `client`, `server`).
@@ -43,12 +42,12 @@ CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run lint`, `npm test`, `npm 
 - `server/`: Express 5 API + SQLite access (ESM, `type: module`)
   - `src/db.js` — schema (`users`, `categories`, `requests`), seed data, `createDatabase()`. Pass `":memory:"` for tests.
   - `src/current-user.js` — validates the simulated `currentUserId` against active users.
-  - `src/requests.js` — single `requestSelect` query joined against categories/requester/reviewer, plus role-based visibility clauses (`visibilityClause`) and single-record authorization in `getVisibleRequest`.
+  - `src/requests.js` — single `requestSelect` query joined against categories/requester/reviewer, plus role-based visibility clauses (`visibilityClause`), single-record authorization in `getVisibleRequest`, and ownership/status-checked mutation in `cancelRequest`.
   - `src/http-errors.js` — `HttpError` (status + code + message) and `errorResponse()` shared JSON error shape.
   - `src/app.js` — `createApp({ db })` builds the Express app: routes, static-serves `client/dist` in production (catch-all `GET /{*path}` → `index.html`), and a single error-handling middleware that maps `HttpError`/JSON parse errors/unexpected errors to responses.
   - `src/index.js` — process entry point; reads `PORT`/`DB_FILE` env vars, wires `createApp`, handles `SIGINT`/`SIGTERM` shutdown.
 - `client/`: React 19 + Vite SPA
-  - `src/api.js` — thin fetch wrappers (`loadUsers`, `loadRequests`, `loadRequest`) that unwrap `{ data }` and throw on `{ error }`.
+  - `src/api.js` — thin fetch wrappers (`loadUsers`, `loadRequests`, `loadRequest`, `cancelRequest`) that unwrap `{ data }` and throw on `{ error }`.
   - `src/App.jsx` — top-level state: loads users, tracks the simulated `currentUserId`, loads visible requests on user change, loads a single request on selection.
   - `src/components/` — `UserSwitcher`, `RequestList`, `RequestDetails`, `StatusBadge`.
   - Vite dev server proxies `/api/*` to `http://localhost:3001` (see `vite.config.js`); in production Express serves the built client directly.
@@ -67,7 +66,7 @@ CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run lint`, `npm test`, `npm 
 - Visibility rules belong in `requests.js` (SQL `WHERE`/row checks), not in the client.
 - Use parameterized SQL for every query — never interpolate request- or user-supplied values into a query string. Every existing query (`server/src/db.js`, `server/src/requests.js`) uses `db.prepare(...).run(...)`/`.get(...)` with bound parameters; keep that pattern for any new query.
 - Domain errors are `HttpError` instances with an HTTP status and a machine-readable `code`; the app-level error middleware in `app.js` is the only place that converts errors to HTTP responses.
-- Request statuses are `Draft`, `Submitted`, `Approved`, `Rejected`, `Cancelled`. Cancellation, approval/rejection, and request history are explicitly out of scope for the base app — they're course exercises, not missing features to fill in unprompted.
+- Request statuses are `Draft`, `Submitted`, `Approved`, `Rejected`, `Cancelled`.
 - Notifications, attachments, real authentication, and multi-level approval are out of scope entirely.
 
 ### Testing
