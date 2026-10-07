@@ -65,6 +65,7 @@ CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run lint`, `npm test`, `npm 
 
 - Identity is simulated: the client sends `currentUserId`, not real auth. Keep server-side visibility/authorization checks authoritative — never rely on the UI hiding something as the actual control.
 - Visibility rules belong in `requests.js` (SQL `WHERE`/row checks), not in the client.
+- Use parameterized SQL for every query — never interpolate request- or user-supplied values into a query string. Every existing query (`server/src/db.js`, `server/src/requests.js`) uses `db.prepare(...).run(...)`/`.get(...)` with bound parameters; keep that pattern for any new query.
 - Domain errors are `HttpError` instances with an HTTP status and a machine-readable `code`; the app-level error middleware in `app.js` is the only place that converts errors to HTTP responses.
 - Request statuses are `Draft`, `Submitted`, `Approved`, `Rejected`, `Cancelled`. Cancellation, approval/rejection, and request history are explicitly out of scope for the base app — they're course exercises, not missing features to fill in unprompted.
 - Notifications, attachments, real authentication, and multi-level approval are out of scope entirely.

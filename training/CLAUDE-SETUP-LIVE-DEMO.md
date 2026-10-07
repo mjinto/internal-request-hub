@@ -16,11 +16,12 @@ This is an instruction guide. It does not pre-create Claude configuration or imp
 | 4 | Discover and review `docs/domain.md` | Establish what the application currently does |
 | 5 | Discover and review `docs/architecture.md` | Establish how the application currently works |
 | 6 | Walk the cancellation change through intent, spec and plan, by hand | Feel the manual process before automating it |
-| 7 | Create `constitution.md` | Write down the rules we just followed, for every future change |
-| 8 | Import the reviewed documents from `CLAUDE.md` | Connect shared understanding and rules to the agent |
-| 9 | Confirm the context loaded | Check the wiring, not just the filenames |
-| 10 | Create a planning skill | Turn the repeated plan-drafting step into a procedure |
-| 11 | Review and checkpoint the setup | Inspect what actually changed |
+| 7 | Build a custom review agent and skill | See how a project-specific agent differs from a generic one |
+| 8 | Create `constitution.md` | Write down the rules we just followed, for every future change |
+| 9 | Import the reviewed documents from `CLAUDE.md` | Connect shared understanding and rules to the agent |
+| 10 | Confirm the context loaded | Check the wiring, not just the filenames |
+| 11 | Create a planning skill | Turn the repeated plan-drafting step into a procedure |
+| 12 | Review and checkpoint the setup | Inspect what actually changed |
 
 ## Before presenting
 
@@ -235,6 +236,11 @@ Have a reviewer accept or correct the plan. Check it with the audience:
 - Does it map every acceptance example to evidence?
 - Does it preserve unrelated visibility behavior and exercise scope?
 - Has it stopped before application edits?
+- Does it require `/code-review` and `/security-review` before
+  implementation is considered complete, not just `npm test`/`lint`/
+  `build`? This change adds a new mutating endpoint and new
+  authorization logic — exactly the shape a dedicated security pass is
+  for, and a manual read-through alone can miss it.
 
 **Terminal:**
 
@@ -244,11 +250,96 @@ git diff --cached
 git commit -m "Capture the cancellation change: accepted intent, spec and plan"
 ```
 
-**Say:** “Notice three different roles each accepted one artifact before the next was drafted — the product owner for intent, a reviewer for spec, a reviewer for plan. We did all of that by hand, with nothing enforcing the order or who was allowed to approve what. Let's write that down so it isn't memory-dependent next time.”
+**Say:** “Notice three different roles each accepted one artifact before the next was drafted — the product owner for intent, a reviewer for spec, a reviewer for plan. We did all of that by hand, with nothing enforcing the order or who was allowed to approve what. We also added `/code-review` and `/security-review` as explicit gates in the plan before sign-off — those are built-in, generic review skills. Next, let's build something project-specific instead of relying only on generic tools, before we write any of this down as a rule.”
 
 **Checkpoint:** `training/work/cancel-request` contains an accepted `intent.md`, `spec.md` and `plan.md`, each drafted only after the previous one was reviewed. Implementation has not started — that stays a separate, later decision.
 
-## Step 7 — Agree and create the project constitution
+## Step 7 — Build a custom review agent and skill
+
+**Say:** “`/code-review` and `/security-review` are generic — they don't know this app's one specific rule: every request action must be checked on the server, using ownership, status and role, never just hidden in the UI. Let's build two things once, so every future exercise reuses them instead of re-explaining the rule each time: an **agent**, which knows the rule and reviews a diff against it, and a **skill**, which runs a whole verification checklist automatically. Both are triggered by name, on purpose — neither fires itself.”
+
+An agent and a skill are different tools for different jobs. An agent
+is a separate worker with its own instructions and its own set of
+tools, good at one focused kind of judgment call. A skill is a
+procedure — a checklist loaded into the current session, good at
+repeating the same multi-step task the same way every time, and able
+to call on an agent as one of its steps. We build one of each here.
+
+**Claude prompt (agent):**
+
+```text
+Create .claude/agents/authorization-reviewer.md as a custom subagent.
+Its only job: audit a diff against this repo's authorization boundary -
+identity resolved via getCurrentUser, explicit ownership/role/status
+checks before any read beyond what's allowed or any mutation, denials
+using the existing HttpError/errorResponse shape and codes, and
+parameterized SQL only. Base the rule on CLAUDE.md, docs/domain.md and
+docs/architecture.md section 5 - cite them in the agent's instructions,
+don't invent new rules. Give it read-only tools (no Edit or Write) since
+it reviews, it does not implement. Write its description so it is only
+used when explicitly named, not inferred from a general "review my
+code" request. Create only this one file.
+```
+
+**Claude prompt (skill):**
+
+```text
+Create .claude/skills/verify-checkpoint/SKILL.md as a manually-invoked
+skill (disable-model-invocation: true). Given a change folder as its
+argument, it should: read that folder's plan.md Acceptance-to-evidence
+map; run npm test, npm run lint and npm run build and report real
+pass/fail, not an assumption; invoke the authorization-reviewer agent
+on the current diff and include its findings; check that every
+acceptance example in the map has real, existing evidence, flagging any
+that don't; and end with one summary table plus a plain pass/fail
+recommendation for engineer review. It must not edit application code
+or mark anything verified that it did not actually check. Create only
+this one file.
+```
+
+Review both files with the audience:
+
+- Does the agent's description make clear it's only used when asked
+  for by name — not something Claude would reach for on its own for an
+  unrelated request?
+- Does the agent cite the actual repository files its rule comes from,
+  instead of inventing a rule?
+- Does the skill use `disable-model-invocation: true`, matching the
+  convention the `plan-feature` skill will use later?
+- Does the skill read evidence rather than assume the plan's claims
+  are already true?
+
+**Say:** “Neither of these has run yet — there's no diff to check until
+implementation of the cancellation change actually starts, and that's
+still a later, separate decision. We built them now so they're ready to
+use the moment implementation begins, and so the constitution we write
+next can simply point at them as the expected review step, instead of
+describing review in the abstract.”
+
+**Checkpoint:** `.claude/agents/authorization-reviewer.md` and
+`.claude/skills/verify-checkpoint/SKILL.md` exist, are scoped to manual
+invocation, and cite real repository evidence for their rules. Neither
+has been invoked yet.
+
+**How to invoke these later:**
+
+- **The agent** usually does not need a session restart — Claude Code
+  can pick up a new `.claude/agents/*.md` file within the current
+  session. Invoke it by naming it in plain language: "Use the
+  authorization-reviewer agent to review this diff."
+- **The skill** follows Claude Code's usual skill-loading behavior:
+  the slash-command list is normally built once per session, so expect
+  to need a fresh session before `/verify-checkpoint` appears. Exit and
+  run `claude` again from the repo root, type `/` to confirm it's
+  listed (or type the command directly), then invoke it with a change
+  folder: `/verify-checkpoint training/work/cancel-request`. Because of
+  `disable-model-invocation: true`, it will never run on its own.
+- If either is missing after a restart, check the file is at the exact
+  path shown above and that its frontmatter starts with `---` as the
+  very first line — the same failure mode already noted for
+  `plan-feature` in step 11.
+
+## Step 8 — Agree and create the project constitution
 
 **Say:** “We just followed a shape by hand: intent approved by the product owner, spec approved by a reviewer, plan approved by a reviewer, in that order. Now we write that shape down as a rule, so the next feature starts from an agreed convention instead of an ad hoc memory of what we did last time. CLAUDE.md is the entry point for the agent; the constitution is the shared rule source for the team. We choose this filename — it has no special automatic-loading behavior.”
 
@@ -290,7 +381,12 @@ single "agree intent and specification" line:
   approver. Do not draft the next phase's artifact, and do not invent or
   assume an approval that was not actually given.
 - Once plan.md is approved, implementation proceeds to a diff, then a
-  review of that diff.
+  review of that diff. That review runs the `authorization-reviewer`
+  agent (`.claude/agents/authorization-reviewer.md`) against the diff
+  and, once a plan.md with an Acceptance-to-evidence map exists, the
+  `verify-checkpoint` skill, rather than relying on an ad hoc read-
+  through; `/code-review` and `/security-review` remain available for
+  concerns outside the authorization boundary.
 - Review findings return to whichever earlier decision needs correction,
   not forward to a new artifact: a defect in the implementation returns
   to the diff for a fix; an unsuitable approach returns to plan.md for
@@ -312,12 +408,15 @@ approval enforcement. Do not scaffold a specs/ folder for any specific
 feature yet — only the convention, its README, and the blank templates.
 Report any conflict with the current repository, including the existing
 training/inputs/templates and the training/work/cancel-request/{intent,spec,plan}.md
-artifacts just created by hand in the previous step — note in particular
-that those artifacts used informal, undifferentiated reviewer roles for
-spec and plan, not the distinct technical-lead/technical-reviewer
-approvers proposed here. Note whether specs/ should generalize the
-training/work convention for ongoing repo work while training/work stays
-scoped to workshop exercises, or whether the two should be unified.
+artifacts created by hand two steps ago — note in particular that those
+artifacts used informal, undifferentiated reviewer roles for spec and
+plan, not the distinct technical-lead/technical-reviewer approvers
+proposed here. Note whether specs/ should generalize the training/work
+convention for ongoing repo work while training/work stays scoped to
+workshop exercises, or whether the two should be unified. Also note
+whether the `authorization-reviewer` agent and `verify-checkpoint`
+skill built in the previous step should be referenced here by name, or
+left for CLAUDE.md to point at instead.
 ```
 
 Review the draft with the audience. The following is a compact fallback to type manually if the generation takes too long:
@@ -343,6 +442,10 @@ Review the draft with the audience. The following is a compact fallback to type 
   named approver. Never assume or invent an approval.
 - After plan.md is approved, implement one reviewable checkpoint at a
   time, producing a diff for review.
+- Review a diff with the `authorization-reviewer` agent and, once
+  plan.md has an evidence map, the `verify-checkpoint` skill; use
+  `/code-review` and `/security-review` for concerns outside the
+  authorization boundary.
 - Route review findings back to the stage that needs correction: a
   defect returns to the diff, an unsuitable approach returns to plan.md,
   unclear behavior returns to spec.md.
@@ -368,7 +471,7 @@ Review the draft with the audience. The following is a compact fallback to type 
 
 **Checkpoint:** Explain which rules come from the repository and which decisions the team just agreed, and compare the named approvers against the informal roles actually used by hand in step 6. Record the actual review, not a fictional approval label.
 
-## Step 8 — Link the constitution through CLAUDE.md
+## Step 9 — Link the constitution through CLAUDE.md
 
 **Claude prompt:**
 
@@ -409,7 +512,7 @@ The example is shown in a code block here for copying. In the actual `CLAUDE.md`
 
 **Checkpoint:** Inspect the diff and verify the three import paths.
 
-## Step 9 — Confirm the files load
+## Step 10 — Confirm the files load
 
 Exit the current Claude session and launch `claude` again from the repository root, so the demonstration uses a fresh context after the setup change.
 
@@ -434,7 +537,7 @@ artifacts.
 
 **Checkpoint:** The agent identifies server-side authorization, exercise boundaries and review-before-implementation. Its summary is a context check, not proof that every future action will comply.
 
-## Step 10 — Create the planning skill
+## Step 11 — Create the planning skill
 
 **Say:** “We already drafted plan.md by hand for cancellation, in step 6. The constitution now defines that shape as a shared rule; a skill makes applying it automatic for the next feature. Our first procedure is drafting a plan for a change that already has an accepted intent and spec — exactly what we just did ourselves, now repeatable.”
 
@@ -486,7 +589,7 @@ The triple-backtick wrappers belong to this guide, not the skill file. Its first
 
 **Checkpoint:** The skill refers to existing templates and keeps planning separate from implementation. Manual invocation controls when it is used; it does not make the surrounding session read-only.
 
-## Step 11 — Inspect and checkpoint the setup
+## Step 12 — Inspect and checkpoint the setup
 
 **Terminal:**
 
@@ -521,6 +624,9 @@ repository inspection -> reviewed domain -> reviewed architecture
 
 One change, by hand:
 accepted intent -> accepted spec -> accepted plan (implementation deferred)
+
+Reusable tools, built once:
+authorization-reviewer agent -> verify-checkpoint skill
 
 Project foundations, written down after:
 team constitution -> CLAUDE.md imports -> planning skill
