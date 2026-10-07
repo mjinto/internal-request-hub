@@ -2,7 +2,6 @@
 
 Internal Request Hub is the starter application for the AI-300 greenfield software development course. Employees can view their requests, reviewers can view requests assigned to them, and administrators can view all requests.
 
-The repository intentionally provides a small but realistic base. Approval, rejection, cancellation, and request-history workflows are not implemented; they are reserved for demonstrations and participant exercises.
 
 ## Technology
 
