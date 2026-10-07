@@ -14,13 +14,13 @@ The repository intentionally provides a small but realistic base. Approval, reje
 
 ## Requirements
 
-- Node.js 22 or later
+- Node.js 22.13 or later (Node 22 LTS recommended)
 - npm 10 or later
 
 ## Start locally
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -41,12 +41,10 @@ npm run db:reset  # Delete and recreate the local database
 
 ## Verify a merged change locally
 
-There is no hosted deployment for this course. GitHub Actions runs lint, tests, and the build on every pull request and on `main` (see `.github/workflows/ci.yml`). After merging a reviewed pull request, verify the change by running the merged `main` commit locally:
+There is no hosted deployment for this course. GitHub Actions runs lint, tests, and the build on every pull request and on `main` and `audience-starter` (see `.github/workflows/ci.yml`). After review, verify your exercise branch locally. Run these commands from your branch; do not switch to the instructor branch:
 
 ```bash
-git switch main
-git pull
-npm install
+npm ci
 npm run build
 npm start        # serves the built client and API together on port 3001
 ```
@@ -66,3 +64,7 @@ The user selector represents the current signed-in user. It exists only for trai
 - Unknown, inactive, or unauthorized users receive a clear API error.
 
 See [`training/issues`](training/issues) for the prepared exercises.
+
+## Audience starter
+
+Follow [the participant walkthrough](training/WORKSHOP.md) for the workshop sequence, role decisions and verification. Blank artifact templates are in [training/templates](training/templates). This is a minimal starter: participants create CLAUDE.md and their planning skill during the workshop using their own installed tool and account. The application runs without Claude. No Claude setup or exercise solution is included.
