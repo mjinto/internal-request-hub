@@ -546,7 +546,7 @@ Review the draft with the audience. The following is a compact fallback to type 
 - Enforce authorization and state-transition rules on the server.
 - Preserve the API error shape and existing visibility rules.
 
-## Development workflow — specs/<feature-name>/
+## Development workflow — training/work/<feature-name>/
 - intent.md: problem, outcome and scope. Originator drafts; product
   owner accepts.
 - spec.md: behavior, design and constraints. Engineer drafts; technical
@@ -719,7 +719,13 @@ New files may be untracked and absent from `git diff`; open them explicitly befo
 If the setup is accepted, stage only the intended files and inspect the staged result:
 
 ```bash
-git add CLAUDE.md constitution.md docs/domain.md docs/architecture.md .claude/skills/plan-feature/SKILL.md
+git add CLAUDE.md constitution.md docs/domain.md docs/architecture.md
+git add .claude/agents/authorization-reviewer.md
+git add .claude/skills/verify-checkpoint/SKILL.md
+git add .claude/skills/fetch-github-issue/SKILL.md
+git add .claude/skills/draft-intent-from-issue/SKILL.md
+git add .claude/skills/plan-feature/SKILL.md
+git add training/work/README.md training/work/_templates/
 git diff --cached --stat
 git diff --cached
 git commit -m "Establish shared project rules and planning skill"
@@ -729,7 +735,7 @@ git commit -m "Establish shared project rules and planning skill"
 
 **Checkpoint:** No application code or unrelated files were changed. Do not stage personal account settings or credentials. If Git identity is not configured, pause the commit step and keep the reviewed files; do not change a participant's global identity for the demo.
 
-This completes the setup demo. The cancellation plan from step 6 is already accepted — continue into its implementation using bounded checkpoints, inspecting the diff, running the relevant checks, and recording actual results in the review template. Any feature planned after this point can use the `specs/` convention and the `plan-feature` skill instead of repeating step 6 by hand.
+This completes the setup demo. The cancellation plan from step 6 is already accepted — continue into its implementation using bounded checkpoints, inspecting the diff, running the relevant checks, and recording actual results in the review template. Any feature planned after this point can use the `training/work/<feature-name>/` convention and the `plan-feature` skill instead of repeating step 6 by hand.
 
 ## Final demonstration recap
 
