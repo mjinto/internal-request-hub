@@ -1,7 +1,11 @@
 # Internal Request Hub
 
-Internal Request Hub is the starter application for the AI-300 greenfield software development course. Employees can view their requests, reviewers can view requests assigned to them, and administrators can view all requests.
-
+Internal Request Hub is a small internal tool for tracking requests that
+employees submit and reviewers act on. Employees can view the requests
+they've created, reviewers can view requests assigned to them, and
+administrators can view all requests across the organization. The
+assigned reviewer can approve or reject a submitted request, and the
+requester can cancel their own submitted request.
 
 ## Technology
 
@@ -38,9 +42,10 @@ npm start         # Run the production server
 npm run db:reset  # Delete and recreate the local database
 ```
 
-## Verify a merged change locally
+## Verify a change locally
 
-There is no hosted deployment for this course. GitHub Actions runs lint, tests, and the build on every pull request and on `main` and `audience-starter` (see `.github/workflows/ci.yml`). After review, verify your exercise branch locally. Run these commands from your branch; do not switch to the instructor branch:
+GitHub Actions runs lint, tests, and the build on every pull request
+(see `.github/workflows/ci.yml`). You can also verify a build locally:
 
 ```bash
 npm ci
@@ -48,11 +53,16 @@ npm run build
 npm start        # serves the built client and API together on port 3001
 ```
 
-Check `/api/health` and the relevant feature scenario in the browser. The SQLite database persists in `server/data/request-hub.db` between runs, so a restart does not lose data; use `npm run db:reset` to return to the seeded state, including for a rollback rehearsal (`git revert`/`git checkout` the previous commit, restart, verify, then restore).
+Check `/api/health` and the relevant feature in the browser. The SQLite
+database persists in `server/data/request-hub.db` between runs, so a
+restart does not lose data; use `npm run db:reset` to return to the
+seeded state.
 
 ## Simulated identity
 
-The user selector represents the current signed-in user. It exists only for training and local demonstration. The API accepts `currentUserId` to apply basic data visibility rules. This is not production authentication.
+The user selector represents the current signed-in user. The API
+accepts `currentUserId` to apply basic data visibility rules. This is
+not production authentication.
 
 ## Current behavior
 
@@ -60,10 +70,7 @@ The user selector represents the current signed-in user. It exists only for trai
 - Reviewers see requests assigned to them.
 - Administrators see all requests.
 - Users can open a request and see its details.
+- The requester can cancel their own submitted request.
+- The assigned reviewer can approve a submitted request, or reject it
+  with a comment.
 - Unknown, inactive, or unauthorized users receive a clear API error.
-
-See [`training/issues`](training/issues) for the prepared exercises.
-
-## Audience starter
-
-Follow [the participant walkthrough](training/inputs/WORKSHOP.md) for the workshop sequence, role decisions and verification. Blank artifact templates are in [training/work/_templates](training/work/_templates). This is a minimal starter: participants create CLAUDE.md and their planning skill during the workshop using their own installed tool and account. The application runs without Claude. No Claude setup or exercise solution is included.
