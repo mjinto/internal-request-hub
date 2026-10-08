@@ -6,24 +6,13 @@ before the session — the session itself starts with the live demo,
 followed by hands-on team work, and neither includes time for software
 installation.
 
-Estimated time: **20–30 minutes**.
-
 ## What you will have, by the end of this checklist
 
 - Git, Node.js and npm installed and working
 - Your own GitHub account
-- Claude Code installed and signed in, under your own account or your
-  organization's approved access
+- Claude Code installed and signed in
 - A code editor
 
-## What you will receive at the session (do not set these up yourself)
-
-- A zip file of the starter application
-- A feature brief (a short Markdown file) assigned to your team
-- Your 3-person team will create **one shared GitHub repository** for
-  the exercise — do this together at the start of the session, not
-  beforehand. Agree now on who will create it so they can invite the
-  other two as collaborators quickly once it exists.
 
 ## 1. Install and verify core tools
 
@@ -97,11 +86,7 @@ organization: <https://code.claude.com/docs/en/setup>.
 - [ ] I have a code editor installed (VS Code is recommended, but any
   editor you're comfortable with works: <https://code.visualstudio.com>)
 
-## 5. Optional: the GitHub CLI
-
-Not required, but convenient for creating your team's shared
-repository and pushing to it from the terminal instead of the GitHub
-website.
+## 5. The GitHub CLI
 
 ```text
 macOS (Homebrew):   brew install gh
@@ -118,11 +103,4 @@ Linux). Follow the official setup guide linked above for the current
 recommended path for your version, and allow extra time if WSL needs
 to be installed — it is a larger download and may require a restart.
 
-## If something doesn't install
 
-Don't spend more than 15–20 minutes troubleshooting alone. Contact the
-facilitator before the session with:
-
-- What you tried to install (Git, Node.js, Claude Code, etc.)
-- The exact command you ran
-- The exact error message (remove any secrets or tokens before sending it)
