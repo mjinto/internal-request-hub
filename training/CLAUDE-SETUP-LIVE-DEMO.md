@@ -12,15 +12,6 @@ perform during the demo. By the end, cancellation and approve/reject are
 both implemented, reviewed and committed; request history is left for
 participants.
 
-## The story to tell
-
-“Each developer can give an agent a different set of instructions. We will
-first walk one small change through intent, specification, plan and
-implementation by hand, so everyone feels what the manual process is like.
-Only then will we write that down as shared rules and automate the
-repeatable parts — Claude can discover facts about the repository, but the
-team must decide the rules it should follow. Then we'll run a second
-feature through that automation, so you can feel the difference.”
 
 | Step | Action | Audience takeaway |
 | --- | --- | --- |
@@ -110,15 +101,6 @@ Open the generated `CLAUDE.md` and review it with the audience. Keep this step f
 
 Review the stated stack, available commands and basic repository orientation. Check commands against `package.json`, flag obviously unsupported claims, and note anything that needs later investigation. Do not expand this into a detailed domain or architecture analysis or add the project constitution yet.
 
-**Optional Claude prompt:**
-
-```text
-Review the generated CLAUDE.md only. Check its commands against
-package.json and flag unsupported claims or unclear wording.
-Report concise findings for my review. Do not edit files, conduct a
-detailed domain or architecture analysis, or implement features.
-We will create and review the domain and architecture documents next.
-```
 
 **Say:** “This is Claude's initial understanding of the repository. We are reviewing the starting point. Next we will investigate the domain and architecture in more detail before touching the feature.”
 
