@@ -809,83 +809,25 @@ cp training/work/_templates/spec.md training/work/approve-or-reject/spec.md
 **Claude prompt (intent):**
 
 ```text
-Read training/inputs/issues/02-approve-or-reject-request.md and our
-project guidance (CLAUDE.md, constitution.md, docs/domain.md,
-docs/architecture.md). Draft the intent in
-training/work/approve-or-reject/intent.md using its existing sections.
-Separate confirmed rules from questions. Keep the acceptance decision
-pending for the product-owner role. Do not modify application code or
-expand into other exercises.
+Using the spec-driven workflow in constitution.md and training/work/README.md,
+implement https://github.com/mjinto/internal-request-hub/issues/2.
+
+1. Run /draft-intent-from-issue 2 training/work/<short-feature-name> to produce
+   a draft intent.md. Then STOP — I (product owner) must explicitly accept it
+   before you draft spec.md.
+2. Draft spec.md. STOP — I (reviewer) must approve it before you draft plan.md.
+3. Draft plan.md, including an Acceptance-to-evidence map. STOP — I must approve
+   it before any implementation code is written.
+4. Implement the diff per the approved plan.
+5. Run the authorization-reviewer agent on the diff explicitly.
+6. Run /verify-checkpoint training/work/<short-feature-name>.
+7. If any review finding comes back, route it to whichever artifact it belongs
+   to (diff/plan/spec) rather than patching forward — tell me which and why.
+
+Do not mark any Approval record as accepted on your own authority — only I can.
+Stop and ask at each of the three gates above, and don't start the next phase
+until I've responded.
 ```
-
-Have the product-owner role accept or correct the intent — still manual, same as step 6.
-
-**Claude prompt (spec):**
-
-```text
-Using the accepted training/work/approve-or-reject/intent.md, draft
-training/work/approve-or-reject/spec.md from its template, covering
-success for both approve and reject, denied actors, invalid statuses,
-the required rejection comment, persistence and unchanged data on
-failure. Separate confirmed rules from questions. Keep the acceptance
-decision pending for a reviewer. Do not modify application code.
-```
-
-Have a reviewer accept or correct the spec — still manual.
-
-This is where step 6 took a hand-written prompt. Here, the skill does it instead:
-
-**Inside Claude Code:**
-
-```text
-/plan-feature training/work/approve-or-reject
-```
-
-Have the technical reviewer accept or correct the resulting `plan.md`, same checklist as step 6:
-
-- Does it use real repository files and existing patterns?
-- Does it enforce the assigned-reviewer and `Submitted`-status checks on the server?
-- Does it map every acceptance example to evidence, including the required rejection comment?
-- Does it preserve unrelated visibility behavior and exercise scope?
-- Does it require `/code-review`, `/security-review`, the `authorization-reviewer` agent and `verify-checkpoint` before sign-off?
-
-**Claude prompt (implement):**
-
-```text
-Implement training/work/approve-or-reject/plan.md's accepted approach,
-one ordered checkpoint at a time. After each checkpoint, run npm test,
-npm run lint and npm run build and report real results.
-```
-
-**Claude prompt (authorization review):**
-
-```text
-Use the authorization-reviewer agent to review the current diff for
-training/work/approve-or-reject. Report its findings.
-```
-
-**Inside Claude Code:**
-
-```text
-/verify-checkpoint training/work/approve-or-reject
-/code-review
-/security-review
-```
-
-Address any findings, the same way as step 8.
-
-**Terminal:**
-
-```bash
-git add -A
-git status --short
-git diff --cached --stat
-git commit -m "Implement approve/reject using the plan-feature skill and constitution workflow"
-```
-
-**Say:** “Compare the two features. For cancellation, every stage was a hand-written prompt and we built the review tools as we went. For approve/reject, intent and spec were still ours to accept — the team's judgment doesn't get automated away — but planning was one skill call, and the review tools already existed. That's the actual payoff of writing the rule down, not a claim about it.”
-
-**Checkpoint:** Cancellation and approve/reject both work end to end in the running app. `training/work/approve-or-reject` has an accepted intent, spec and a plan drafted via `/plan-feature`. The feature is implemented, reviewed by `authorization-reviewer` and `verify-checkpoint`, and committed separately from the cancellation work.
 
 ## Step 14 — Inspect and checkpoint the setup
 
