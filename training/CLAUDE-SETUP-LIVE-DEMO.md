@@ -21,7 +21,7 @@ participants.
 | 4 | Discover and review `docs/domain.md` | Establish what the application currently does |
 | 5 | Discover and review `docs/architecture.md` | Establish how the application currently works |
 | 6 | Walk the cancellation change through intent, spec and plan, by hand | Feel the manual process before automating it |
-| 7 | Build custom tools: a review agent and three skills | See a project-specific agent, a skill that calls it, and two skills that chain together |
+| 7 | Build custom tools: a review agent, three skills and a doc-sync hook | See a project-specific agent, a skill that calls it, two skills that chain together, and a hook that fires on its own |
 | 8 | Implement the cancellation change and review the diff | See the review tools used for real, not just described |
 | 9 | Create `constitution.md` | Write down the rules we just followed, for every future change |
 | 10 | Import the reviewed documents from `CLAUDE.md` | Connect shared understanding and rules to the agent |
@@ -259,9 +259,9 @@ git commit -m "Capture the cancellation change: accepted intent, spec and plan"
 
 **Checkpoint:** `training/work/cancel-request` contains an accepted `intent.md`, `spec.md` and `plan.md`, each drafted only after the previous one was reviewed. Implementation comes next, once the review tools below exist.
 
-## Step 7 — Build custom tools: a review agent and three skills
+## Step 7 — Build custom tools: a review agent, three skills and a doc-sync hook
 
-**Say:** “`/code-review` and `/security-review` are generic — they don't know this app's one specific rule: every request action must be checked on the server, using ownership, status and role, never just hidden in the UI. Let's build two things once, so every future exercise reuses them instead of re-explaining the rule each time: an **agent**, which knows the rule and reviews a diff against it, and a **skill**, which runs a whole verification checklist automatically. Both are triggered by name, on purpose — neither fires itself.”
+**Say:** “`/code-review` and `/security-review` are generic — they don't know this app's one specific rule: every request action must be checked on the server, using ownership, status and role, never just hidden in the UI. Let's build two things once, so every future exercise reuses them instead of re-explaining the rule each time: an **agent**, which knows the rule and reviews a diff against it, and a **skill**, which runs a whole verification checklist automatically. Both are triggered by name, on purpose — neither fires itself. Later in this step we'll also build a **hook**, which is the opposite: it fires on its own, on a matching event, with no invocation at all.”
 
 An agent and a skill are different tools for different jobs. An agent
 is a separate worker with its own instructions and its own set of
@@ -270,7 +270,9 @@ procedure — a checklist loaded into the current session, good at
 repeating the same multi-step task the same way every time, and able
 to call on an agent as one of its steps, or on another skill as one of
 its steps. We build one of each first, then two more skills later in
-this step that chain together the second way.
+this step that chain together the second way, then a hook — a third
+kind of tool that runs automatically on an event (here, editing a
+file) rather than being named by the presenter or the model.
 
 **Claude prompt (agent):**
 
@@ -440,6 +442,78 @@ manual invocation. `draft-intent-from-issue`'s instructions name
 commands inline. Neither has necessarily been run yet — note that a
 live fetch requires `gh` to be installed and authenticated, per the
 prerequisite above.
+
+### A hook: keeping the OpenAPI spec in sync automatically
+
+**Say:** “An agent and a skill only run when you name them. A **hook**
+is the opposite — it fires on a matching event with no invocation at
+all. Let's wire one to the one thing in this app that goes stale the
+moment nobody's watching: the API contract. Every time a route changes
+in `app.js`, the OpenAPI spec should regenerate on its own, with no
+`/command` and no asking the model.”
+
+**Claude prompt:**
+
+```text
+Add OpenAPI documentation generation for this Express API, kept in sync
+automatically:
+
+1. Add swagger-jsdoc as a devDependency in server/package.json - it is
+   a build-time generator, not something the running server imports.
+2. Add an @openapi JSDoc block above every route in server/src/app.js
+   (summary, parameters, response descriptions) that matches what the
+   route actually does. Do not invent parameters or responses it
+   doesn't have.
+3. Create server/scripts/generate-openapi.js that builds the spec from
+   those annotations with swagger-jsdoc and writes docs/openapi.json.
+4. Add a "docs:openapi" script to server/package.json that runs it.
+5. Add a PostToolUse hook in .claude/settings.json that reruns
+   "cd server && npm run docs:openapi" whenever Edit or Write touches
+   server/src/app.js. Scope it with the hook's "if" field to that one
+   path rather than firing on every edit anywhere in the repo.
+
+Run the generator once yourself to confirm docs/openapi.json is valid
+before reporting done.
+```
+
+Review the result with the audience:
+
+- Does the hook's `if` condition scope it to `server/src/app.js`, not
+  every `Edit`/`Write` in the repository?
+- Is `swagger-jsdoc` a devDependency — does the server itself still run
+  with no new runtime dependency?
+- Does every `@openapi` block describe behavior the route actually
+  has, not an invented contract?
+
+**Say:** “Unlike the agent and the skill, we don't invoke this one —
+we prove it by making an edit and watching it react, with the session
+left exactly as it was.”
+
+**Terminal (prove it fires, then prove it reverts cleanly):**
+
+Through Claude, add a throwaway route to `server/src/app.js` with its
+own `@openapi` block — for example a dummy `GET /api/ping` — then
+check it appears without restarting the session:
+
+```bash
+jq -r '.paths | keys[]' docs/openapi.json
+```
+
+Remove the throwaway route the same way and confirm the path
+disappears again, then confirm nothing else broke:
+
+```bash
+jq -r '.paths | keys[]' docs/openapi.json
+npm test
+npm run lint
+```
+
+**Checkpoint:** `.claude/settings.json` has a `PostToolUse` hook scoped
+to `server/src/app.js`; `docs/openapi.json` reflects the current real
+routes; adding and reverting a route updates the file both ways
+without a session restart; `npm test` and `npm run lint` still pass.
+Unlike the agent and the skills above, this tool is never invoked by
+name — its only trigger is the matching file edit.
 
 ## Step 8 — Implement the cancellation change and review the diff
 
@@ -850,6 +924,8 @@ git add .claude/skills/verify-checkpoint/SKILL.md
 git add .claude/skills/fetch-github-issue/SKILL.md
 git add .claude/skills/draft-intent-from-issue/SKILL.md
 git add .claude/skills/plan-feature/SKILL.md
+git add .claude/settings.json
+git add server/scripts/generate-openapi.js docs/openapi.json
 git add training/work/README.md training/work/_templates/
 git diff --cached --stat
 git diff --cached
