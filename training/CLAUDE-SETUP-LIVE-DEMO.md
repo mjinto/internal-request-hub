@@ -1,12 +1,17 @@
 # Live demo: add Claude Code to Internal Request Hub
 
-Use this guide to walk one change through intent, specification and plan by hand, then write down the shared project rules and automate the repeatable parts for the next change. Estimated segment: 30–40 minutes, depending on discussion.
+Use this guide to walk one change through intent, specification and plan by
+hand and implement it, then write down the shared project rules, automate
+the repeatable parts, and use that automation to take a second feature
+through the same shape end to end. Estimated segment: 70–90 minutes,
+depending on discussion and how long each implementation takes to generate.
 
-This is an instruction guide. It does not pre-create Claude configuration or implement an exercise. Terminal commands and prompts below are actions for the presenter to perform during the demo.
+This is an instruction guide. It does not pre-create Claude configuration.
+Terminal commands and prompts below are actions for the presenter to
+perform during the demo. By the end, cancellation and approve/reject are
+both implemented, reviewed and committed; request history is left for
+participants.
 
-## The story to tell
-
-“Each developer can give an agent a different set of instructions. We will first walk one small change through intent, specification and plan by hand, so everyone feels what the manual process is like. Only then will we write that down as shared rules and automate the repeatable parts — Claude can discover facts about the repository, but the team must decide the rules it should follow.”
 
 | Step | Action | Audience takeaway |
 | --- | --- | --- |
@@ -17,11 +22,13 @@ This is an instruction guide. It does not pre-create Claude configuration or imp
 | 5 | Discover and review `docs/architecture.md` | Establish how the application currently works |
 | 6 | Walk the cancellation change through intent, spec and plan, by hand | Feel the manual process before automating it |
 | 7 | Build custom tools: a review agent and three skills | See a project-specific agent, a skill that calls it, and two skills that chain together |
-| 8 | Create `constitution.md` | Write down the rules we just followed, for every future change |
-| 9 | Import the reviewed documents from `CLAUDE.md` | Connect shared understanding and rules to the agent |
-| 10 | Confirm the context loaded | Check the wiring, not just the filenames |
-| 11 | Create a planning skill | Turn the repeated plan-drafting step into a procedure |
-| 12 | Review and checkpoint the setup | Inspect what actually changed |
+| 8 | Implement the cancellation change and review the diff | See the review tools used for real, not just described |
+| 9 | Create `constitution.md` | Write down the rules we just followed, for every future change |
+| 10 | Import the reviewed documents from `CLAUDE.md` | Connect shared understanding and rules to the agent |
+| 11 | Confirm the context loaded | Check the wiring, not just the filenames |
+| 12 | Create a planning skill | Turn the repeated plan-drafting step into a procedure |
+| 13 | Take approve/reject through the automated workflow | Feel the before/after difference directly |
+| 14 | Review and checkpoint the setup | Inspect what actually changed |
 
 ## Before presenting
 
@@ -29,7 +36,7 @@ This is an instruction guide. It does not pre-create Claude configuration or imp
 - Rehearse with the installed version: `claude --version`. Interface details and generated `/init` content can vary by version and user configuration.
 - Use Node.js 22.13 or later and npm 10 or later. Allow time for dependency installation before the live session.
 - Inspect `git status --short`. Save unrelated work before switching branches. Do not reset or clean someone else's work to obtain a fresh demo.
-- Check whether `docs/domain.md`, `docs/architecture.md`, `CLAUDE.md`, `constitution.md`, `training/work/cancel-request/` or `.claude/` already exist. On a reused demo checkout, review or reuse them; `/init` may suggest changes to an existing file instead of creating a new one.
+- Check whether `docs/domain.md`, `docs/architecture.md`, `CLAUDE.md`, `constitution.md`, `training/work/cancel-request/`, `training/work/approve-or-reject/` or `.claude/` already exist. On a reused demo checkout (for example, a prior rehearsal), review or reuse them; `/init` may suggest changes to an existing file instead of creating a new one. A fresh checkout of `facilitator-starter` has none of these — the demo builds all of them live.
 - Existing personal or parent-directory Claude instructions can also affect the session. Keep the distinction between personal settings and the repository's shared rules visible.
 - If you want to actually demonstrate fetching a live GitHub issue in step 7, install and authenticate the GitHub CLI beforehand: `gh --version` and `gh auth status`. Without it, `fetch-github-issue` still works as designed — it fails with the real `gh` error instead of inventing issue content — but you won't have a real issue to fetch from.
 
@@ -40,7 +47,7 @@ This is an instruction guide. It does not pre-create Claude configuration or imp
 ```bash
 cd /Users/jintomenachery/Documents/Codex/2026-09-21/we/outputs/internal-request-hub
 git status --short
-git switch audience-starter
+git switch facilitator-starter
 git switch -c demo/claude-foundations
 npm ci
 npm test
@@ -48,7 +55,13 @@ npm run lint
 npm run build
 ```
 
-If the demo branch already exists, use `git switch demo/claude-foundations` and inspect its current state. Participants use the path of their own clone and their own feature branch name.
+`facilitator-starter` is the facilitator's own baseline: application code,
+a plain README, the issue briefs under `training/inputs/issues/`, and the
+blank templates under `training/work/_templates/` — but no `CLAUDE.md`,
+`constitution.md`, `docs/`, `.claude/`, or implemented features. It is
+separate from `audience-starter`, which participants receive later with
+none of the training scaffolding. If the demo branch already exists, use
+`git switch demo/claude-foundations` and inspect its current state.
 
 Run the application in another terminal:
 
@@ -58,7 +71,7 @@ npm run dev
 
 Open http://localhost:5173. Show Maya's submitted request 101 and the absence of a cancellation action. The user selector simulates identity; the application is not a production authentication system.
 
-**Say:** “We know what currently works, and we have an unfinished feature to work on. We will walk that feature through its first few steps by hand before deciding on any shared rules.”
+**Say:** “We know what currently works, and we have two unfinished features to work on. We will walk the first through its full shape by hand before deciding on any shared rules.”
 
 **Checkpoint:** Baseline tests, lint and build pass. No feature changes have started.
 
@@ -88,15 +101,6 @@ Open the generated `CLAUDE.md` and review it with the audience. Keep this step f
 
 Review the stated stack, available commands and basic repository orientation. Check commands against `package.json`, flag obviously unsupported claims, and note anything that needs later investigation. Do not expand this into a detailed domain or architecture analysis or add the project constitution yet.
 
-**Optional Claude prompt:**
-
-```text
-Review the generated CLAUDE.md only. Check its commands against
-package.json and flag unsupported claims or unclear wording.
-Report concise findings for my review. Do not edit files, conduct a
-detailed domain or architecture analysis, or implement features.
-We will create and review the domain and architecture documents next.
-```
 
 **Say:** “This is Claude's initial understanding of the repository. We are reviewing the starting point. Next we will investigate the domain and architecture in more detail before touching the feature.”
 
@@ -106,7 +110,7 @@ We will create and review the domain and architecture documents next.
 
 **Say:** “Before changing the application, we need a shared understanding of what it does today. We will derive a domain draft from the code, then review that interpretation with the product-owner role.”
 
-On a fresh workshop starter, create this document now. In this checkout the document already exists: review and improve it instead of overwriting it blindly. To demonstrate discovery from scratch, ask for a separate draft first and compare it with the existing document after review. Do not delete prepared references merely to make the demo look fresh.
+On a fresh `facilitator-starter` checkout this document does not exist yet — create it now. If you're reusing a checkout from an earlier rehearsal and it already exists, review and improve it instead of overwriting it blindly; to demonstrate discovery from scratch in that case, ask for a separate draft first and compare it with the existing document after review. Do not delete prepared references merely to make the demo look fresh.
 
 **Claude prompt:**
 
@@ -170,7 +174,7 @@ Walk through the request trace with the technical-reviewer role. Confirm where t
 
 **Checkpoint:** The technical-reviewer role accepts or corrects the architecture description. Apply the reviewed documentation edits. Keep proposals separate from current implementation facts.
 
-**Transition:** “We now understand what the application does and how it's built. Before we write down any rules, let's run one small change through the shape of the work by hand.”
+**Transition:** “We now understand what the application does and how it's built. Before we write down any rules, let's run one small change through the whole shape of the work by hand — including implementing it.”
 
 ## Step 6 — Walk the cancellation change through intent, spec and plan, by hand
 
@@ -251,9 +255,9 @@ git diff --cached
 git commit -m "Capture the cancellation change: accepted intent, spec and plan"
 ```
 
-**Say:** “Notice three different roles each accepted one artifact before the next was drafted — the product owner for intent, a reviewer for spec, a reviewer for plan. We did all of that by hand, with nothing enforcing the order or who was allowed to approve what. We also added `/code-review` and `/security-review` as explicit gates in the plan before sign-off — those are built-in, generic review skills. Next, let's build something project-specific instead of relying only on generic tools, before we write any of this down as a rule.”
+**Say:** “Notice three different roles each accepted one artifact before the next was drafted — the product owner for intent, a reviewer for spec, a reviewer for plan. We did all of that by hand, with nothing enforcing the order or who was allowed to approve what. We also added `/code-review` and `/security-review` as explicit gates in the plan before sign-off — those are built-in, generic review skills. Next, let's build something project-specific instead of relying only on generic tools — then we'll actually implement this plan — before we write any of it down as a rule.”
 
-**Checkpoint:** `training/work/cancel-request` contains an accepted `intent.md`, `spec.md` and `plan.md`, each drafted only after the previous one was reviewed. Implementation has not started — that stays a separate, later decision.
+**Checkpoint:** `training/work/cancel-request` contains an accepted `intent.md`, `spec.md` and `plan.md`, each drafted only after the previous one was reviewed. Implementation comes next, once the review tools below exist.
 
 ## Step 7 — Build custom tools: a review agent and three skills
 
@@ -313,11 +317,11 @@ Review both files with the audience:
   are already true?
 
 **Say:** “Neither of these has run yet — there's no diff to check until
-implementation of the cancellation change actually starts, and that's
-still a later, separate decision. We built them now so they're ready to
-use the moment implementation begins, and so the constitution we write
-next can simply point at them as the expected review step, instead of
-describing review in the abstract.”
+we actually implement the cancellation change, which is the very next
+step. We built them now so they're ready to use the moment
+implementation begins, and so the constitution we write after that can
+simply point at them as the expected review step, instead of describing
+review in the abstract.”
 
 **Checkpoint:** `.claude/agents/authorization-reviewer.md` and
 `.claude/skills/verify-checkpoint/SKILL.md` exist, are scoped to manual
@@ -340,7 +344,7 @@ has been invoked yet.
 - If either is missing after a restart, check the file is at the exact
   path shown above and that its frontmatter starts with `---` as the
   very first line — the same failure mode already noted for
-  `plan-feature` in step 11.
+  `plan-feature` in step 12.
 
 ### Two more skills: fetching a real GitHub issue into an intent
 
@@ -437,9 +441,83 @@ commands inline. Neither has necessarily been run yet — note that a
 live fetch requires `gh` to be installed and authenticated, per the
 prerequisite above.
 
-## Step 8 — Agree and create the project constitution
+## Step 8 — Implement the cancellation change and review the diff
 
-**Say:** “We just followed a shape by hand: intent approved by the product owner, spec approved by a reviewer, plan approved by a reviewer, in that order. Now we write that shape down as a rule, so the next feature starts from an agreed convention instead of an ad hoc memory of what we did last time. CLAUDE.md is the entry point for the agent; the constitution is the shared rule source for the team. We choose this filename — it has no special automatic-loading behavior.”
+**Say:** “Intent, spec and plan are all accepted. Now we implement — one
+checkpoint at a time — and use the two tools we just built to review the
+diff before we call it done. This is the only hand-built implementation
+in this session; everything after the constitution reuses it.”
+
+**Claude prompt (implement):**
+
+```text
+Implement training/work/cancel-request/plan.md's accepted approach, one
+ordered checkpoint at a time. Follow the plan exactly; if you find a
+reason to deviate, stop and report it instead of silently changing the
+approach. After each checkpoint, run npm test, npm run lint and npm run
+build and report real results. Do not mark a checkpoint done without
+running its verification.
+```
+
+Watch the diff as it grows. Confirm the new route is thin (`app.js`),
+the ownership/status checks and the status mutation live in
+`requests.js`, and new tests exercise both the allowed case and every
+denied case from the spec.
+
+**Say:** “The plan has an Acceptance-to-evidence map and this diff adds
+a new mutating endpoint with new authorization logic — exactly what we
+built the agent and the skill for.”
+
+**Claude prompt (authorization review):**
+
+```text
+Use the authorization-reviewer agent to review the current diff for
+training/work/cancel-request. Report its findings before I decide
+whether to request changes.
+```
+
+**Inside Claude Code:**
+
+```text
+/verify-checkpoint training/work/cancel-request
+/code-review
+/security-review
+```
+
+Address any findings from these four checks before treating the change
+as done — route a plain implementation defect back into the diff; if a
+review finds the chosen approach itself unsuitable, that's a plan-level
+finding, not something to patch around in the diff.
+
+**Terminal:**
+
+```bash
+git add -A
+git status --short
+git diff --cached --stat
+git commit -m "Implement cancellation: server authorization, API route, UI action"
+```
+
+**Say:** “Cancellation is done: planned, implemented and reviewed, all by
+hand. Now we write down the shape we just followed, so the next feature
+doesn't repeat all of this from memory.”
+
+**Checkpoint:** Cancellation works end to end in the running app (reload
+http://localhost:5173, cancel Maya's request 101, confirm the status
+persists). Tests, lint and build pass. `authorization-reviewer` and
+`verify-checkpoint` findings were addressed, not skipped. The diff is
+committed separately from the intent/spec/plan commit in step 6.
+
+## Step 9 — Agree and create the project constitution
+
+**Say:** “We just followed a shape by hand, all the way through: intent
+approved by the product owner, spec approved by a reviewer, plan approved
+by a reviewer, implementation reviewed by our two tools, in that order.
+Now we write that shape down as a rule, so the next feature starts from
+an agreed convention instead of an ad hoc memory of what we did last
+time. CLAUDE.md is the entry point for the agent; the constitution is the
+shared rule source for the team. We choose this filename — it has no
+special automatic-loading behavior.”
 
 **Claude prompt:**
 
@@ -478,7 +556,9 @@ single "agree intent and specification" line:
 - spec.md records behavior, design and constraints. The engineer drafts
   it; the technical lead approves it.
 - plan.md records implementation steps and checks. The engineer owns it;
-  the technical reviewer accepts it.
+  the technical reviewer accepts it. Once accepted, the engineer may
+  draft plan.md with the forthcoming `plan-feature` skill instead of by
+  hand - the output and approval requirement are identical either way.
 - An artifact for a phase is only drafted once the previous phase's
   artifact in that same folder has been explicitly approved by its named
   approver. Do not draft the next phase's artifact, and do not invent or
@@ -520,6 +600,12 @@ single "agree intent and specification" line:
   draft-intent-from-issue skill as a proposed diff for review; do not
   rewrite unrelated parts of CLAUDE.md.
 
+State plainly, under a short "Status" note, which features this repository
+has implemented so far using this convention (cancellation, implemented
+and reviewed in this session) and which remain open (approval/rejection,
+about to follow the same convention; request history, a separate later
+exercise).
+
 Do not implement features or claim these rules already have technical
 approval enforcement. Do not create a feature folder for any new feature.
 Do not build or modify the draft-intent-from-issue skill in this step;
@@ -551,8 +637,8 @@ Review the draft with the audience. The following is a compact fallback to type 
   owner accepts.
 - spec.md: behavior, design and constraints. Engineer drafts; technical
   lead approves.
-- plan.md: implementation steps and checks. Engineer owns; technical
-  reviewer accepts.
+- plan.md: implementation steps and checks. Engineer owns, by hand or
+  with the plan-feature skill; technical reviewer accepts either way.
 - Draft the next artifact only after the current one is approved by its
   named approver. Never assume or invent an approval.
 - After plan.md is approved, implement one reviewable checkpoint at a
@@ -579,14 +665,16 @@ Review the draft with the audience. The following is a compact fallback to type 
 ## Workshop boundaries
 - Keep the user selector as simulated identity.
 - Do not add real authentication, notifications or external services.
-- Cancellation, approval/rejection and history are separate exercises.
+- Cancellation is implemented and reviewed. Approval/rejection follows
+  next using this same convention. Request history is a separate,
+  later exercise.
 - These instructions guide the agent. Permissions, review protection and
   CI provide separate enforcement where configured.
 ```
 
-**Checkpoint:** Explain which rules come from the repository and which decisions the team just agreed, and compare the named approvers against the informal roles actually used by hand in step 6. Record the actual review, not a fictional approval label.
+**Checkpoint:** Explain which rules come from the repository and which decisions the team just agreed, and compare the named approvers against the informal roles actually used by hand in steps 6 and 8. Record the actual review, not a fictional approval label.
 
-## Step 9 — Link the constitution through CLAUDE.md
+## Step 10 — Link the constitution through CLAUDE.md
 
 **Claude prompt:**
 
@@ -627,7 +715,7 @@ The example is shown in a code block here for copying. In the actual `CLAUDE.md`
 
 **Checkpoint:** Inspect the diff and verify the three import paths.
 
-## Step 10 — Confirm the files load
+## Step 11 — Confirm the files load
 
 Exit the current Claude session and launch `claude` again from the repository root, so the demonstration uses a fresh context after the setup change.
 
@@ -652,9 +740,9 @@ artifacts.
 
 **Checkpoint:** The agent identifies server-side authorization, exercise boundaries and review-before-implementation. Its summary is a context check, not proof that every future action will comply.
 
-## Step 11 — Create the planning skill
+## Step 12 — Create the planning skill
 
-**Say:** “We already drafted plan.md by hand for cancellation, in step 6. The constitution now defines that shape as a shared rule; a skill makes applying it automatic for the next feature. Our first procedure is drafting a plan for a change that already has an accepted intent and spec — exactly what we just did ourselves, now repeatable.”
+**Say:** “We drafted plan.md by hand for cancellation, in step 6, and then implemented and reviewed it ourselves in step 8. The constitution now defines that shape as a shared rule; a skill makes the planning step automatic for the next feature. Let's build it, then immediately use it for real on approve/reject.”
 
 **Claude prompt:**
 
@@ -670,9 +758,9 @@ files. Use training/work/_templates/plan.md to write plan.md in the change folde
 Map every acceptance example to verification, flag risks and questions,
 and stop for technical-reviewer acceptance of plan.md before editing
 implementation code.
-Create only the skill file. Do not implement the cancellation exercise,
-and do not re-run this against training/work/cancel-request — that
-feature's plan was already accepted by hand in step 6.
+Create only the skill file. Do not implement anything, and do not re-run
+this against training/work/cancel-request — that feature's plan was
+already accepted and implemented by hand in steps 6 and 8.
 ```
 
 Review the skill. A concise fallback body is:
@@ -702,9 +790,104 @@ Change folder: $ARGUMENTS
 
 The triple-backtick wrappers belong to this guide, not the skill file. Its first line must be the frontmatter delimiter `---`.
 
-**Checkpoint:** The skill refers to existing templates and keeps planning separate from implementation. Manual invocation controls when it is used; it does not make the surrounding session read-only.
+**Checkpoint:** The skill refers to existing templates and keeps planning separate from implementation. Manual invocation controls when it is used; it does not make the surrounding session read-only. Not invoked yet — step 13 is where it actually runs.
 
-## Step 12 — Inspect and checkpoint the setup
+## Step 13 — Take approve/reject through the automated workflow
+
+**Say:** “Same shape as cancellation — intent, spec, plan, implementation, review — but this time the convention is written down and two of our tools already exist. Watch which parts stay manual and which parts just got shorter.”
+
+Read `training/inputs/issues/02-approve-or-reject-request.md` with the audience.
+
+**Terminal:**
+
+```bash
+mkdir -p training/work/approve-or-reject
+cp training/work/_templates/intent.md training/work/approve-or-reject/intent.md
+cp training/work/_templates/spec.md training/work/approve-or-reject/spec.md
+```
+
+**Claude prompt (intent):**
+
+```text
+Read training/inputs/issues/02-approve-or-reject-request.md and our
+project guidance (CLAUDE.md, constitution.md, docs/domain.md,
+docs/architecture.md). Draft the intent in
+training/work/approve-or-reject/intent.md using its existing sections.
+Separate confirmed rules from questions. Keep the acceptance decision
+pending for the product-owner role. Do not modify application code or
+expand into other exercises.
+```
+
+Have the product-owner role accept or correct the intent — still manual, same as step 6.
+
+**Claude prompt (spec):**
+
+```text
+Using the accepted training/work/approve-or-reject/intent.md, draft
+training/work/approve-or-reject/spec.md from its template, covering
+success for both approve and reject, denied actors, invalid statuses,
+the required rejection comment, persistence and unchanged data on
+failure. Separate confirmed rules from questions. Keep the acceptance
+decision pending for a reviewer. Do not modify application code.
+```
+
+Have a reviewer accept or correct the spec — still manual.
+
+This is where step 6 took a hand-written prompt. Here, the skill does it instead:
+
+**Inside Claude Code:**
+
+```text
+/plan-feature training/work/approve-or-reject
+```
+
+Have the technical reviewer accept or correct the resulting `plan.md`, same checklist as step 6:
+
+- Does it use real repository files and existing patterns?
+- Does it enforce the assigned-reviewer and `Submitted`-status checks on the server?
+- Does it map every acceptance example to evidence, including the required rejection comment?
+- Does it preserve unrelated visibility behavior and exercise scope?
+- Does it require `/code-review`, `/security-review`, the `authorization-reviewer` agent and `verify-checkpoint` before sign-off?
+
+**Claude prompt (implement):**
+
+```text
+Implement training/work/approve-or-reject/plan.md's accepted approach,
+one ordered checkpoint at a time. After each checkpoint, run npm test,
+npm run lint and npm run build and report real results.
+```
+
+**Claude prompt (authorization review):**
+
+```text
+Use the authorization-reviewer agent to review the current diff for
+training/work/approve-or-reject. Report its findings.
+```
+
+**Inside Claude Code:**
+
+```text
+/verify-checkpoint training/work/approve-or-reject
+/code-review
+/security-review
+```
+
+Address any findings, the same way as step 8.
+
+**Terminal:**
+
+```bash
+git add -A
+git status --short
+git diff --cached --stat
+git commit -m "Implement approve/reject using the plan-feature skill and constitution workflow"
+```
+
+**Say:** “Compare the two features. For cancellation, every stage was a hand-written prompt and we built the review tools as we went. For approve/reject, intent and spec were still ours to accept — the team's judgment doesn't get automated away — but planning was one skill call, and the review tools already existed. That's the actual payoff of writing the rule down, not a claim about it.”
+
+**Checkpoint:** Cancellation and approve/reject both work end to end in the running app. `training/work/approve-or-reject` has an accepted intent, spec and a plan drafted via `/plan-feature`. The feature is implemented, reviewed by `authorization-reviewer` and `verify-checkpoint`, and committed separately from the cancellation work.
+
+## Step 14 — Inspect and checkpoint the setup
 
 **Terminal:**
 
@@ -731,11 +914,11 @@ git diff --cached
 git commit -m "Establish shared project rules and planning skill"
 ```
 
-**Say:** “This checkpoint contains project foundations, not the feature — the feature's own artifacts were already committed by hand in step 6. These foundations can now be reviewed and shared like other repository changes.”
+**Say:** “This checkpoint contains project foundations, not the features — cancellation and approve/reject were already committed separately, as we built and then used the tools. These foundations can now be reviewed and shared like other repository changes.”
 
-**Checkpoint:** No application code or unrelated files were changed. Do not stage personal account settings or credentials. If Git identity is not configured, pause the commit step and keep the reviewed files; do not change a participant's global identity for the demo.
+**Checkpoint:** No unrelated files were changed. Do not stage personal account settings or credentials. If Git identity is not configured, pause the commit step and keep the reviewed files; do not change a participant's global identity for the demo.
 
-This completes the setup demo. The cancellation plan from step 6 is already accepted — continue into its implementation using bounded checkpoints, inspecting the diff, running the relevant checks, and recording actual results in the review template. Any feature planned after this point can use the `training/work/<feature-name>/` convention and the `plan-feature` skill instead of repeating step 6 by hand.
+This completes the demo. Cancellation and approve/reject are both implemented, reviewed and committed. Request history remains open — participants can take it through the `training/work/<feature-name>/` convention and the `plan-feature` skill themselves, instead of doing it by hand the way we did for cancellation.
 
 ## Final demonstration recap
 
@@ -743,17 +926,22 @@ This completes the setup demo. The cancellation plan from step 6 is already acce
 Project understanding:
 repository inspection -> reviewed domain -> reviewed architecture
 
-One change, by hand:
-accepted intent -> accepted spec -> accepted plan (implementation deferred)
+One change, entirely by hand:
+accepted intent -> accepted spec -> accepted plan -> implemented -> reviewed
+(cancellation)
 
 Reusable tools, built once:
 authorization-reviewer agent -> verify-checkpoint skill
 
 Project foundations, written down after:
 team constitution -> CLAUDE.md imports -> planning skill
+
+One change, with the rule and tools already in place:
+accepted intent -> accepted spec -> /plan-feature -> implemented -> reviewed
+(approve/reject)
 ```
 
-Doing the work by hand first meant the rules written down afterward describe something the team actually experienced, not an assumption about how work should go. The shared rules prevent every session after this from starting with a different convention. The change records make decisions visible. Verification and review assess whether the implementation follows them. Reviewer capacity still needs managing.
+Doing the work by hand first meant the rules written down afterward describe something the team actually experienced, not an assumption about how work should go. Running a second feature through the same shape with the tools already built let the audience feel the before/after directly, rather than being told about it. The shared rules prevent every session after this from starting with a different convention. The change records make decisions visible. Verification and review assess whether the implementation follows them. Reviewer capacity still needs managing.
 
 ## References
 
